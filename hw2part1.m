@@ -80,8 +80,8 @@ bmats = [];
 
 z0 = [0; 0; 0];
 v0 = [0; 0];
-zs;
-vs;
+zs = [];
+vs = [];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -109,7 +109,7 @@ while normGamma > epsilon
     r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0
     
     [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0)
-    [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), x0)
+    [Tr, z] = ode45(@(t,z)solverval(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(T,0,N), xcolsToUse(:,1))
     
     normGamma = normGamma - 1;
 end
