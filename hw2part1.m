@@ -104,13 +104,13 @@ while normGamma > epsilon
   
   
     [TP, P] = ode45(@(t,P)solvepval(t, P, Q, R, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), P1)
-    length(P)
     tmpP = P(100,:);
-    r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0
+    r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
     
     [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0)
-    [Tr, z] = ode45(@(t,z)solverval(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(T,0,N), xcolsToUse(:,1))
-    
+    x0valForZdot = [xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
+    [Tz, z] = ode45(@(t,z)getZdot(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(T,0,N), x0valForZdot)
+    v = getV(R, Amats, Bmats, P, z, r, xcolsToUse, ucolsToUse, Q)
     normGamma = normGamma - 1;
 end
 
@@ -271,7 +271,7 @@ function rdot = solverval(t, r, P, R, Q, As, Bs, xs, us)
 end
 
 function zdot = getZdot(t, z, P, R, Q, As, Bs, xs, us, rs)
-  global N T;
+  global xdest N T;
   index = round((t/T)*(N-1)+1);
   A = As(:,:,index);
   B = Bs(:,:,index);
@@ -280,9 +280,13 @@ function zdot = getZdot(t, z, P, R, Q, As, Bs, xs, us, rs)
   newx3 = xs(3,index);
   newu1 = us(1,index);
   newu2 = us(2,index);
-  newr1 = rs(1,index);
-  newr2 = rs(2,index);
-  newr3 = rs(3,index);
+  newr1 = rs(index,1);
+  newr2 = rs(index,2);
+  newr3 = rs(index,3); 
+  xdestcols1 = xdest(1,index);
+  xdestcols2 = xdest(2,index);
+  xdestcols3 = xdest(3,index);
+  xdestcolsToUse = [xdestcols1; xdestcols2; xdestcols3];
   a = transpose(transpose([newx1; newx2; newx3]-xdestcolsToUse) * Q);
   b = transpose(transpose([newu1; newu2]) * R);
   Pval = P(index,:);
@@ -291,6 +295,43 @@ function zdot = getZdot(t, z, P, R, Q, As, Bs, xs, us, rs)
   
   zdot = A * z + B * (-1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b);
 end
+
+function v = getV(R, As, Bs, P, zs, rs, xs, us, Q)
+  global T N xdest;
+  vs = [];
+  for i=1:length(rs)
+    A = As(:,:,i);
+    B = Bs(:,:,i);
+    Pval = P(i,:);
+    newP = [Pval(1:3); Pval(4:6); Pval(7:9)];
+    newx1 = xs(1,i);
+    newx2 = xs(2,i);
+    newx3 = xs(3,i);
+    newu1 = us(1,i);
+    newu2 = us(2,i);
+    xdestcols1 = xdest(1,i);
+    xdestcols2 = xdest(2,i);
+    xdestcols3 = xdest(3,i);
+    xdestcolsToUse = [xdestcols1; xdestcols2; xdestcols3];
+    a = transpose(transpose([newx1; newx2; newx3]-xdestcolsToUse) * Q);
+    b = transpose(transpose([newu1; newu2]) * R);
+    z = transpose(zs(i,:));
+    rval = transpose(rs(i,:));
+    vs(:,i) = -1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
+  end
+  v = vs%-1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
+end
+
+function Amatv = Amat(x, u, index)
+  % D_1(f(x,u))
+  Amatv = [0 0 -sin(x(3,index))*u(1,index); 0 0 cos(x(3,index))*u(1,index); 0 0 0];
+end
+
+function Bmatv = Bmat(x, u, index)
+  % D_2(f(x,u))
+  Bmatv = [cos(x(3,index)) 0; sin(x(3,index)) 0; 0 1];
+end
+
 
 function xvectdot = Fvectdot(x, u, index)
   xvectdot = [cos(x(3, index)) * u(1, index); sin(x(3, index)) * u(1, index); u(2, index)];
