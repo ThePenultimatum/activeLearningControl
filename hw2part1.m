@@ -14,7 +14,8 @@ Q = [100 0 0; 0 15 0; 0 0 1];
 R = [0.1 0; 0 0.1];
 P1 = [5 0 0;0 1 0; 0 0 0.01];
 
-N = 1000;
+N = 1000
+;
 T = 2*pi;
 dtval = T / N;
 
@@ -87,7 +88,7 @@ while (abs(norm) > epsilon) & iters < 100
     
     [TP, P] = ode45(@(t,P)solvepval(t, P, Q, R, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), P1);
     tmpP = P(N,:);
-    r0 = P1 * (xcolsToUse(:,N) - xdest(:,N));%[tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
+    r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0; %P1 * (xcolsToUse(:,N) - xdest(:,N));%[tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
     
     [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0);
     x0valForZdot = [0; 0; 0];%[xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
@@ -112,8 +113,8 @@ while (abs(norm) > epsilon) & iters < 100
     end
     
     %%% setup armijo initial conditions
-    newxcols = xcolsToUse%[x0col; x1col; theta0col];
-    newucols = ucolsToUse% + gammaval * v;
+    newxcols = xcolsToUse;%[x0col; x1col; theta0col];
+    newucols = ucolsToUse;% + gammaval * v;
     jvalWithNewCurrentTraj = J([newxcols; newucols]);
     jvalWithCurrentTraj = J([xcolsToUse; ucolsToUse]);
     djvalWithCurrentTraj = DJ(xcolsToUse, ucolsToUse, z, v);
@@ -124,7 +125,7 @@ while (abs(norm) > epsilon) & iters < 100
     
     %%% armijo: while cost of current cols is more than cost of taking a
     %%% step
-    while ((costCurr > costWithStep) & (n < 15))
+    while ((costCurr > costWithStep) & (n < 10))
         
         % get new u cols
         newucols = ucolsToUse + gammaval * v;
@@ -148,7 +149,7 @@ while (abs(norm) > epsilon) & iters < 100
         % calc cost of this step
         costCurr = J([newxcols; newucols]);
         % calc cost of taking another step
-        costWithStep = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v)
+        costWithStep = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v);
         % update params
         n = n + 1;
         gammaval = beta ^ n;
@@ -181,12 +182,27 @@ end
 % title("p");
 % xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("p vals");
-plot(dtval * [0:N-1],[ucolsToUse(1,:);ucolsToUse(2,:)]);
-xlim([0 dtval*(N-1)]); 
-ylim([-100 100]);
-title("p");
-xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-ylabel("p vals");
+
+% plot(dtval * [0:N-1],[ucolsToUse(1,:);ucolsToUse(2,:)]);
+% xlim([0 dtval*(N-1)]); 
+% ylim([-35 35]);
+% title("Controls");
+% xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("Control values");
+
+% plot(dtval * [0:N-1],[xcolsToUse(1,:);xcolsToUse(2,:);xcolsToUse(3,:)]);
+% xlim([0 dtval*(N-1)]); 
+% ylim([-35 35]);
+% title("Position");
+% xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("Position values");
+
+plot(xcolsToUse(1,:),xcolsToUse(2,:));
+xlim([-5 5]); 
+ylim([-5 5]);
+title("Position");
+xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+ylabel("x2");
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function j = J(vals)
@@ -347,7 +363,7 @@ function v = getV(R, As, Bs, P, zs, rs, xs, us, Q)
     rval = transpose(rs(i,:));
     vs(:,i) = -1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
   end
-  v = vs%-1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
+  v = vs;%-1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
 end
 
 %%%
