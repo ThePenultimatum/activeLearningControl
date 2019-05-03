@@ -20,7 +20,7 @@ Q = [100 0 0; 0 15 0; 0 0 1];
 R = [0.1 0; 0 0.1];
 P1 = [5 0 0;0 1 0; 0 0 0.01];
 
-N = 100;
+N = 1000;
 T = 2*pi;
 dtval = T / N;
 
@@ -86,7 +86,7 @@ vs = [];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 iters = 0
-while (normGamma > epsilon) & iters < 2
+while (normGamma > epsilon) & iters < 3
     for i=1:N
       xtvalsToUse = xcolsToUse(:,i);
       utvalsToUse = ucolsToUse(:,i);
@@ -103,7 +103,7 @@ while (normGamma > epsilon) & iters < 2
     %%%%%%%%%%%%%%%% backwards in time
   
   
-    [TP, P] = ode45(@(t,P)solvepval(t, P, Q, R, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), P1)
+    [TP, P] = ode45(@(t,P)solvepval(t, P, Q, R, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), P1);
     tmpP = P(100,:);
     r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
     
@@ -111,10 +111,10 @@ while (normGamma > epsilon) & iters < 2
     %%%%%%%%%%%%%%%%%%%%%%%%%%%% reverse row order of P and r??????????????
     %%%%%%%%%%%%%%%%%%%%%%%%%%%% 1:21am friday
     
-    [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0)
+    [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0);
     x0valForZdot = [xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
-    [Tz, z] = ode45(@(t,z)getZdot(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(0,T,N), x0valForZdot)
-    v = getV(R, Amats, Bmats, P, z, r, xcolsToUse, ucolsToUse, Q)
+    [Tz, z] = ode45(@(t,z)getZdot(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(0,T,N), x0valForZdot);
+    v = getV(R, Amats, Bmats, P, z, r, xcolsToUse, ucolsToUse, Q);
     
     %%% armijo
     
@@ -132,10 +132,10 @@ while (normGamma > epsilon) & iters < 2
     end
     newxcols = [x0col; x1col; theta0col];
     newucols = ucolsToUse + gammaval * v;
-    fvalleft = J([newxcols; newucols])
-    fvalright = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v)
+    fvalleft = J([newxcols; newucols]);
+    fvalright = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v);
     while ((fvalleft > fvalright) & (n < 15))
-        n = n + 1
+        n = n + 1;
         gammaval = beta ^ n;
         xcolsToUse = newxcols;
         ucolsToUse = newucols;
@@ -159,12 +159,12 @@ while (normGamma > epsilon) & iters < 2
     
     %%%
     
-    z
-    v
-    length(xcolsToUse)
-    length(ucolsToUse)
-    length(z)
-    length(v)
+    z;
+    v;
+    length(xcolsToUse);
+    length(ucolsToUse);
+    length(z);
+    length(v);
     normGamma = matrixNorm([transpose(z); v], 5)
     iters = iters + 1
 end
@@ -173,7 +173,7 @@ amats;
 bmats;
 length(P);
 P = transpose(P);
-plot([0:99], [P(1,:); P(2,:); P(3,:); P(4,:); P(5,:); P(6,:); P(7,:); P(8,:); P(9,:)]);
+plot([0:999], [P(1,:); P(2,:); P(3,:); P(4,:); P(5,:); P(6,:); P(7,:); P(8,:); P(9,:)]);
 xlim([0 100]);
 ylim([-50 50]);
 title("p");
@@ -205,7 +205,7 @@ function j = J(vals)
   xsn = [xs(1, N); xs(2, N); xs(3, N)];
   xdn = Fdest(N);
   xndiff = xsn - xdn;
-  sumsofar = sumsofar + (transpose(xndiff) * P1 * xndiff);
+  sumsofar = 0.5*sumsofar + 0.5*(transpose(xndiff) * P1 * xndiff);
   j = sumsofar;
 end
 
@@ -224,7 +224,7 @@ function dj = DJ(xs, controls, zs, vs)
     sumsofar = sumsofar + transpose(xi) * Q * transpose(zsi) + transpose(ci) * R * vsi;
   end
   sumsofar;
-  sumsofar = sumsofar + transpose(xs(N)) * P1 * zs(N);% + 0.5*matrixNorm()
+  sumsofar = 0.5*sumsofar + 0.5*(transpose(xs(:,N)) * P1 * transpose(zs(N,:)));% + 0.5*matrixNorm()
   dj = sumsofar;
 end
 
@@ -337,6 +337,8 @@ function v = getV(R, As, Bs, P, zs, rs, xs, us, Q)
   end
   v = vs%-1 * inv(R) * transpose(B) * newP * z - inv(R) * transpose(B) * rval - inv(R) * b;
 end
+
+%%%
 
 function Amatv = Amat(x, u, index)
   % D_1(f(x,u))
