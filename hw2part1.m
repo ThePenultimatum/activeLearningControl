@@ -3,16 +3,10 @@ clear
 global epsilon;
 epsilon = 0.1;
 
-%eta0 = [[0 0 pi/2 1 -0.5]];
-
 initCondsVect = [0 0 pi/2 1 -0.5];
-
-%j0 = cost of initial eta0
 
 alpha = 0.4;
 beta = 0.7;
-
-%i = 0;
 
 global Q R P1 N T dtval;
 
@@ -24,12 +18,7 @@ N = 1000;
 T = 2*pi;
 dtval = T / N;
 
-%eta0 = [[0 0 0 0 0]];
-
-gamma0 = [[1 1 1 1 1]];
-
-gamma = gamma0;
-normGamma = normOfRowVect(gamma);
+norm = 10;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -86,35 +75,24 @@ vs = [];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 iters = 0
-while (normGamma > epsilon) & iters < 3
+while (abs(norm) > epsilon) & iters < 100
+    
+    %%% calculate 
     for i=1:N
-      xtvalsToUse = xcolsToUse(:,i);
-      utvalsToUse = ucolsToUse(:,i);
-      xtdotcolsToUse = Fvectdot(xcolsToUse, ucolsToUse, i);
-      xtdotcolsToUse;
-      xdotcolsToUse(:,i) = xtdotcolsToUse;
       At = Amat(xcolsToUse, ucolsToUse, i);
       Amats(:,:,i) = At;
       Bt = Bmat(xcolsToUse, ucolsToUse, i);
       Bmats(:,:,i) = Bt;
     end
-      
-    %%%%%%%%%%%%%%%% a and b are defined forwards while p and r are defined
-    %%%%%%%%%%%%%%%% backwards in time
-  
-  
+    
     [TP, P] = ode45(@(t,P)solvepval(t, P, Q, R, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), P1);
-    tmpP = P(100,:);
-    r0 = [tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%% reverse row order of P and r??????????????
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%% 1:21am friday
+    tmpP = P(N,:);
+    r0 = P1 * (xcolsToUse(:,N) - xdest(:,N));%[tmpP(1,1:3); tmpP(1,4:6); tmpP(1, 7:9)] * z0;
     
     [Tr, r] = ode45(@(t,r)solverval(t, r, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse), linspace(T,0,N), r0);
-    x0valForZdot = [xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
-    [Tz, z] = ode45(@(t,z)getZdot(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(0,T,N), x0valForZdot);
-    v = getV(R, Amats, Bmats, P, z, r, xcolsToUse, ucolsToUse, Q);
+    x0valForZdot = [0; 0; 0];%[xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
+    [Tz, z] = ode45(@(t,z)getZdot(t, z, flip(P), R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, flip(r)), linspace(0,T,N), x0valForZdot);
+    v = getV(R, Amats, Bmats, flip(P), z, flip(r), xcolsToUse, ucolsToUse, Q);
     
     %%% armijo
     
@@ -124,38 +102,60 @@ while (normGamma > epsilon) & iters < 3
     x0col = [initCondsVect(1)];
     x1col = [initCondsVect(2)];
     theta0col = [initCondsVect(3)];
+    
     for j = 2:N
+      xvalToUseForInitVectDot = [x0col(j-1); x1col(j-1); theta0col(j-1)];
       xvalsVector = Fsinglevectdot(xvalToUseForInitVectDot, [ucolsToUse(1,j) ucolsToUse(2,j)]);
       x0col(j) = x0col(j-1) + dtval * xvalsVector(1);
       x1col(j) = x1col(j-1) + dtval * xvalsVector(2);
       theta0col(j) = theta0col(j-1) + dtval * xvalsVector(3);
     end
-    newxcols = [x0col; x1col; theta0col];
-    newucols = ucolsToUse + gammaval * v;
-    fvalleft = J([newxcols; newucols]);
-    fvalright = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v);
-    while ((fvalleft > fvalright) & (n < 15))
-        n = n + 1;
-        gammaval = beta ^ n;
-        xcolsToUse = newxcols;
-        ucolsToUse = newucols;
+    
+    %%% setup armijo initial conditions
+    newxcols = xcolsToUse%[x0col; x1col; theta0col];
+    newucols = ucolsToUse% + gammaval * v;
+    jvalWithNewCurrentTraj = J([newxcols; newucols]);
+    jvalWithCurrentTraj = J([xcolsToUse; ucolsToUse]);
+    djvalWithCurrentTraj = DJ(xcolsToUse, ucolsToUse, z, v);
+    
+    costCurr = jvalWithNewCurrentTraj; % J([xcolsToUse; ucolsToUse])
+    costWithStep = jvalWithCurrentTraj + alpha * beta * djvalWithCurrentTraj;
+
+    
+    %%% armijo: while cost of current cols is more than cost of taking a
+    %%% step
+    while ((costCurr > costWithStep) & (n < 15))
+        
+        % get new u cols
+        newucols = ucolsToUse + gammaval * v;
+        
+        % get new x cols
+        %xcolsToUse = newxcols;
+        %ucolsToUse = newucols;
         x0col = [initCondsVect(1)];
         x1col = [initCondsVect(2)];
         theta0col = [initCondsVect(3)];
+        %%% construct x cols
         for k = 2:N
-          xvalsVector = Fsinglevectdot(xvalToUseForInitVectDot, [ucolsToUse(1,k) ucolsToUse(2,k)]);
+          xvalToUseForInitVectDot = [x0col(k-1); x1col(k-1); theta0col(k-1)];
+          xvalsVector = Fsinglevectdot(xvalToUseForInitVectDot, [newucols(1,k) newucols(2,k)]);
           x0col(k) = x0col(k-1) + dtval * xvalsVector(1);
           x1col(k) = x1col(k-1) + dtval * xvalsVector(2);
           theta0col(k) = theta0col(k-1) + dtval * xvalsVector(3);
         end
         newxcols = [x0col; x1col; theta0col];
-        newucols = ucolsToUse + gammaval * v;
-        fvalleft = J([newxcols; newucols]);
-        fvalright = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v);
+
+        % calc cost of this step
+        costCurr = J([newxcols; newucols]);
+        % calc cost of taking another step
+        costWithStep = J([xcolsToUse;ucolsToUse]) + alpha * beta * DJ(xcolsToUse, ucolsToUse, z, v)
+        % update params
+        n = n + 1;
+        gammaval = beta ^ n;
     end
     
-    %xcolsToUse = newxcols;
-    %ucolsToUse = newucols;
+    xcolsToUse = newxcols;
+    ucolsToUse = newucols;
     
     %%%
     
@@ -165,21 +165,28 @@ while (normGamma > epsilon) & iters < 3
     length(ucolsToUse);
     length(z);
     length(v);
-    normGamma = matrixNorm([transpose(z); v], 5)
+    n
+    norm = DJ(xcolsToUse, ucolsToUse, z, v);%matrixNorm([transpose(z); v], 5)
     iters = iters + 1
 end
 
-amats;
-bmats;
-length(P);
-P = transpose(P);
-plot([0:999], [P(1,:); P(2,:); P(3,:); P(4,:); P(5,:); P(6,:); P(7,:); P(8,:); P(9,:)]);
-xlim([0 100]);
-ylim([-50 50]);
+% amats;
+% bmats;
+% length(P);
+% P = transpose(P);
+% xcolsToUse(2,:);
+% plot([0:N-1], [P(1,:); P(2,:); P(3,:); P(4,:); P(5,:); P(6,:); P(7,:); P(8,:); P(9,:)]); %[xcolsToUse(1,:);xcolsToUse(2,:);xcolsToUse(3,:)]);%
+% xlim([0 N-1]); 
+% ylim([-100 100]);
+% title("p");
+% xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("p vals");
+plot(dtval * [0:N-1],[ucolsToUse(1,:);ucolsToUse(2,:)]);
+xlim([0 dtval*(N-1)]); 
+ylim([-100 100]);
 title("p");
-xlabel("time");
+xlabel("time");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 ylabel("p vals");
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function j = J(vals)
@@ -201,7 +208,7 @@ function j = J(vals)
     xidiff = xi - xdi;
     sumsofar = sumsofar + transpose(xidiff) * Q * xidiff + transpose(ui) * R * ui;
   end
-  sumsofar
+  sumsofar;
   xsn = [xs(1, N); xs(2, N); xs(3, N)];
   xdn = Fdest(N);
   xndiff = xsn - xdn;
@@ -221,10 +228,15 @@ function dj = DJ(xs, controls, zs, vs)
     ci = [controls(1, i); controls(2, i)];
     zsi = zs(i,:);
     vsi = vs(:,i);
-    sumsofar = sumsofar + transpose(xi) * Q * transpose(zsi) + transpose(ci) * R * vsi;
+    xdi = Fdest(i);
+    xidiff = xi - xdi;
+    sumsofar = sumsofar + transpose(xidiff) * Q * transpose(zsi) + transpose(ci) * R * vsi;
   end
   sumsofar;
-  sumsofar = 0.5*sumsofar + 0.5*(transpose(xs(:,N)) * P1 * transpose(zs(N,:)));% + 0.5*matrixNorm()
+  xsn = [xs(1, N); xs(2, N); xs(3, N)];
+  xdn = Fdest(N);
+  xndiff = xsn - xdn;
+  sumsofar = 0.5*sumsofar + 0.5*(transpose(xndiff) * P1 * transpose(zs(N,:)));
   dj = sumsofar;
 end
 
@@ -359,7 +371,7 @@ function xvectdot = Fsinglevectdot(x, u)
 end
 
 function xdest = Fdest(i)
-  global dtval N T;
+  global dtval;
 
   xdest = [dtval * 2 * i / pi; 0; pi/2];
 end
