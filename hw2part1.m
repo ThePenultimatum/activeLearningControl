@@ -9,8 +9,8 @@ initCondsVect = [0 0 pi/2 1 -0.5];
 
 %j0 = cost of initial eta0
 
-alpha = [0 0.5];
-beta = [0 1];
+alpha = 0.4;
+beta = 0.7;
 
 %i = 0;
 
@@ -111,6 +111,24 @@ while normGamma > epsilon
     x0valForZdot = [xcolsToUse(1,1); xcolsToUse(2,1); xcolsToUse(3,1)];
     [Tz, z] = ode45(@(t,z)getZdot(t, z, P, R, Q, Amats, Bmats, xcolsToUse, ucolsToUse, r), linspace(T,0,N), x0valForZdot)
     v = getV(R, Amats, Bmats, P, z, r, xcolsToUse, ucolsToUse, Q)
+    
+    %%% armijo
+    
+    n = 0;
+    gammaval = beta ^ n;
+    
+    fvalleft = J(zeta plus);
+    fvalright = J(zeta cur) + alpha * beta * DJ(zeta curr in direction of eta calculated above);
+    while (fvalleft > fvalright) && n < 15
+        n = n + 1;
+        gammaval = beta ^ n;
+        fvalleft = ;
+        fvalright = ;
+    end
+    
+    %%%
+    
+    
     normGamma = normGamma - 1;
 end
 
@@ -137,14 +155,8 @@ function j = J(vals)
   xs = vals(1:3, 1:N);
   us = vals(4:5, 1:N);
 
-  global N
-  global Q
-  global R
-  global P1
-  Q = [1 0 0; 0 1 0; 0 0 1];
-  R = [1 0; 0 1];
-  P1 = [10 0 0; 0 10 0; 0 0 10];
-  N = 100;
+  global N Q R P1
+
   sumsofar = 0;
   for i = 1:N-1
     xi = [xs(1, i); xs(2, i); xs(3, i)];
@@ -165,14 +177,8 @@ end
 
 function dj = DJ(xs, controls, zs, vs)
 
-  global N
-  global Q
-  global R
-  global P1
-  Q = [1 0 0; 0 1 0; 0 0 1];
-  R = [1 0; 0 1];
-  P1 = [10 0 0; 0 10 0; 0 0 10];
-  N = 100;
+  global N Q R P1
+
   sumsofar = 0;
   for i = 1:N-1
     xi = [xs(1, i); xs(2, i); xs(3, i)];
