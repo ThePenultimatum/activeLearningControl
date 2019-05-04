@@ -2,7 +2,7 @@
 clear
 global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega predictionHorizon samplingTime tCalcMax maxBacktrackingIters endTime Q R P1 dtval totalN maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
 
-N = 10;
+N = 100;
 
 maxU1 = 100;
 maxU2 = 100;
@@ -14,7 +14,7 @@ endTime = 2*pi;
 alphaD = -10; % alpha_d desired sensitivity of the cost function to the control signal
 deltaJMin = 1; % min change in cost
 currTime = 0; % t_curr
-predictionHorizon = endTime / 10000; % T
+predictionHorizon = endTime / 100; % T
 
 totalN = (endTime / predictionHorizon) * N;
 dtval = endTime / totalN;
@@ -87,7 +87,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     %%%%%%%%%%%%%% might have to change iterations for x to i=_:N-1 or
     %%%%%%%%%%%%%% something due to off by 1 errors with 101
     
-    
+    %index = round(((t0)/(tf))*(totalN-1)+1);
     t0 = currTime;
     tf = currTime + predictionHorizon;
     if iterations == 0
@@ -96,19 +96,17 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
         xinit = xsFin(end,:);
     end
     % now get a matrix of xs for times t0->tf
-    xwindow = getXwindow(xinit, t0, tf, N);
+    xwindow = getXwindow(xinit, t0, tf, N);     %%%%%%%%%% maybe give it the last control used?
     xs = [xs xwindow];
     %
     % now get rho (same as adjoint variable P) values for times t0->tf
     rhowindow = getPwindow(xwindow, t0, tf, N); % these rhos are already flipped
-    rhos = [rhowindow; rhos];
-    rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    
+    rhos = [rhos; rhowindow];%%%%%%%%%%%%%%%%????????????????
+    rhos0 = P1;%[rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    %%%%%%%%%%%%%%%%????????????????
     %
     % now get an initial cost J1, init
-    length(xwindow);
-    length(allControlsInit(:,1:N));
     tmp = [xwindow; allControlsInit(:,1:N)];
-    J1init = J(tmp)
+    J1init = J(tmp, t0) % calc J with position for this window and controls for this window but controls are same for all for init controls
     alphaD = -10 * J1init;
     %
     % specify a sensitivity alphaD
@@ -163,18 +161,23 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     iterations;
 end
 
-
-
-rhos = transpose(rhos);
-linspace(0,endTime, totalN);
-rhos(1,:);
-plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
-xlim([0 length(rhos(1,:))-1]); 
-ylim([-20 20]);
-title("Position");
-xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-ylabel("rho vals");
-xs(:,1)
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+for adsf=1
+% rhos = transpose(rhos);
+% linspace(0,endTime, totalN);
+% rhos(1,:);
+% plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
+% xlim([0 length(rhos(1,:))-1]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("rho vals");
+% xs(:,1)
 
 % plot([0:totalN-1], [transpose(allNewPos(:,1)); transpose(allNewPos(:,2)); transpose(allNewPos(:,3))]);
 % xlim([0 totalN-1]); 
@@ -211,6 +214,13 @@ xs(:,1)
 % xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("x2");
 
+% plot(transpose(xsFin(:,1)),transpose(xsFin(:,2)));
+% xlim([-20 20]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("x2");
+
 % plot([0:totalN-1], [allPosInit(1,:); allPosInit(2,:); allPosInit(3,:)]);
 % xlim([0 totalN-1]); 
 % ylim([-20 20]);
@@ -225,45 +235,62 @@ xs(:,1)
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("control vals");
 
-% plot([0:length(transpose(u1(:,1)))-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
-% xlim([0 length(transpose(u1(:,1)))-1]); 
+% plot([0:length(transpose(u2star(:,1)))-1], [transpose(u2star(:,1)); transpose(u2star(:,2))]);
+% xlim([0 length(transpose(u2star(:,1)))-1]); 
 % ylim([-100 100]);
 % title("Controls");
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("control vals");
 
+plot([0:length(transpose(u1(:,1)))-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
+xlim([0 length(transpose(u1(:,1)))-1]); 
+ylim([-100 100]);
+title("Controls");
+xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+ylabel("control vals");
+end %%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
+%%%%%%%%%%%%%% GRAPHING part here
 
 
 %%%
-function j = J(vals)
+function j = J(vals, t0)
   % vals in form of:
   % [[x10, x11, ...., x1N-1],
   %  [x20, x21, ...., x2N-1],
   %  [x30, x31, ...., x3N-1],
   %  [u10, u11, ...., u1N-1],
   %  [u20, u21, ...., u2N-1]]
-  global N Q R P1
+  global N Q R P1 totalN endTime
   xs = vals(1:3, 1:N);
   us = vals(4:5, 1:N);
+  startInd = round(t0/endTime*(totalN)); %%%%%%%%%%%???????????
 
   sumsofar = 0;
-  for i = 1:N-1
+  for i = 1:N
     xi = [xs(1, i); xs(2, i); xs(3, i)];
     ui = [us(1, i); us(2, i)];
-    xdi = Fdest(i);
+    xdi = Fdest(startInd + i-1);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% i'm using partial J ranges but this thinks of it as the whole
     xidiff = xi - xdi;
     sumsofar = sumsofar + transpose(xidiff) * Q * xidiff + transpose(ui) * R * ui;
   end
   sumsofar;
   xsn = [xs(1, N); xs(2, N); xs(3, N)];
-  xdn = Fdest(N);
+  xdn = Fdest(N+startInd);
   xndiff = xsn - xdn;
   sumsofar = 0.5*sumsofar + 0.5*(transpose(xndiff) * P1 * xndiff);
   j = sumsofar;
 end
-function dj = DJ(xs, controls, zs, vs)
+function dj = DJ(xs, controls, zs, vs, t0)
 
-  global N Q R P1
+  global N Q R P1 totalN endTime
+  
+  startInd = round(t0/endTime*(totalN));
 
   sumsofar = 0;
   for i = 1:N-1
@@ -271,13 +298,13 @@ function dj = DJ(xs, controls, zs, vs)
     ci = [controls(1, i); controls(2, i)];
     zsi = zs(i,:);
     vsi = vs(:,i);
-    xdi = Fdest(i);
+    xdi = Fdest(i+startInd-1);
     xidiff = xi - xdi;
     sumsofar = sumsofar + transpose(xidiff) * Q * transpose(zsi) + transpose(ci) * R * vsi;
   end
   sumsofar;
   xsn = [xs(1, N); xs(2, N); xs(3, N)];
-  xdn = Fdest(N);
+  xdn = Fdest(N+startInd);
   xndiff = xsn - xdn;
   sumsofar = 0.5*sumsofar + 0.5*(transpose(xndiff) * P1 * transpose(zs(N,:)));
   dj = sumsofar;
@@ -423,6 +450,7 @@ function ps = getPwindow(xwindow, t0, tf, N)
       xidiffs(i,:) = transpose(xi) - xid;
       As(:,:,i) = Amat(xi, uinit, i);
   end
+  %%%%%%%%%%%%%%As = flip(As);
   [Trho rhos] = ode45(@(t,rhos)getRho(t,rhos,As,xidiffs, t0, tf), linspace(tf, t0, N), rhos0);
   ps = flip(rhos);
 end
