@@ -14,7 +14,7 @@ endTime = 2*pi;
 alphaD = 1; % alpha_d desired sensitivity of the cost function to the control signal
 deltaJMin = 1; % min change in cost
 currTime = 0; % t_curr
-predictionHorizon = endTime / 10; % T
+predictionHorizon = endTime / 30; % T
 
 totalN = (endTime / predictionHorizon) * N;
 dtval = endTime / totalN;
@@ -61,31 +61,43 @@ global allPosInit;
 allPosInit = [x0col; x1col; theta0col];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+allNewPos = transpose(allPosInit);
 
 %%% want to find a control vector in each time window
 %%%  then find the time tau at which to apply that control vector
 %%%  then find the application duration lambda
 
-xsFin = [initCondsVect(1); initCondsVect(2); initCondsVect(3)];
+xsFin = [];%initCondsVect(1); initCondsVect(2); initCondsVect(3)];
 global rhos0;
 rhos0 = P1;
 rhos(1,:) = [P1(1,:) P1(2,:) P1(3,:)];
 xs = [];
 window = 1;
-controls = []
+controls = [];
 for i=1:totalN
     controls(:,i) = [1; -0.5];
 end 
 
 u1 = [];
+iterations = 0;
 
 while currTime < endTime %%%% requires that endtime is int multiple of pred horizon
+    
+    
+    %%%%%%%%%%%%%% might have to change iterations for x to i=_:N-1 or
+    %%%%%%%%%%%%%% something due to off by 1 errors with 101
+    
+    
     t0 = currTime;
     tf = currTime + predictionHorizon;
-    xinit = xsFin(:,end);
+    if iterations == 0
+        xinit = [initCondsVect(1); initCondsVect(2); initCondsVect(3)];
+    else
+        xinit = xsFin(end,:);
+    end
     % now get a matrix of xs for times t0->tf
     xwindow = getXwindow(xinit, t0, tf, N);
-    xs = [xs; xwindow];
+    xs = [xs xwindow];
     %
     % now get rho (same as adjoint variable P) values for times t0->tf
     rhowindow = getPwindow(xwindow, t0, tf, N);
@@ -93,7 +105,9 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    
     %
     % now get an initial cost J1, init
-    tmp = [transpose(xwindow); allControlsInit(:,1:N)];
+    length(xwindow)
+    length(allControlsInit(:,1:N))
+    tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp)
     %
     % specify a sensitivity alphaD
@@ -125,30 +139,54 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     %
     %      Now simulate new xs and put them into an array to be used above
     %%%%%%%%%%%%
-    xFin = [xFin; simulateX(XFin, u1)];
+    if length(xsFin) < 4
+        xsFin = transpose(xsFin);
+    end
+    xsFin = transpose([xsFin; transpose(simulateX(xinit, u1, t0, tf))]);
+%     if iterations == 0
+%         xsFin
+%     end
+    xsFin = transpose(xsFin);
+    if length(xsFin) < 4
+        xsFin = transpose(xsFin);
+    end
+    allNewPos(length(xsFin)+1:end,:);
+    xsFin
+    allNewPos = [xsFin; allNewPos(length(xsFin)+1:end,:)];
     %
     % now update current time
     currTime = tf;
+    iterations = iterations + 1;
+    iterations;
+    iterations;
+    iterations;
 end
 
 
 
-rhos = transpose(rhos);
-linspace(0,endTime, totalN);
-rhos(1,:);
-plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
-xlim([0 length(rhos(1,:))-1]); 
-ylim([-20 20]);
-title("Position");
-xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-ylabel("rho vals");
-% xs(:,1)
-% plot([0:length(xs(:,1))-1], [transpose(xs(:,1)); transpose(xs(:,2)); transpose(xs(:,3))]);
-% xlim([0 length(xs(:,1))-1]); 
+% rhos = transpose(rhos);
+% linspace(0,endTime, totalN);
+% rhos(1,:);
+% plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
+% xlim([0 length(rhos(1,:))-1]); 
 % ylim([-20 20]);
 % title("Position");
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("rho vals");
+% xs(:,1)
+% plot([0:length(xs(:,1))-1], [transpose(allNewPos(:,1)); transpose(allNewPos(:,2)); transpose(allNewPos(:,3))]);
+% xlim([0 length(xs(:,1))-1]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("position vals");
+
+plot([0:totalN-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
+xlim([0 totalN-1]); 
+ylim([-20 20]);
+title("Controls");
+xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+ylabel("control vals");
 
 
 
@@ -208,6 +246,7 @@ function xdest = Fdest(i)
 end
 
 function hval = h(xs)
+  xs = transpose(xs);
   hs = [];
   for i=1:length(xs)
       thetaval = xs(i,3);
@@ -258,24 +297,37 @@ function cs = updateUs(u2, tau, u1)
   cs = res;
 end
 
-function xs = simulateX(xfin, u)
+function xs = simulateX(xinit, u, t0, tf)
   global N
-  xf = xfin(:,end);
-  res = []
-  for i=1:N
-      res(i,:) = [;;];
+  dtval = (tf-t0)/N;
+  uinit = [u(1); u(2)];
+  xinit;
+  xf(1,:) = [transpose(xinit)];
+  xi = xinit;
+  xs = [transpose([xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)])];%transpose(xinit);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ending up with 101?
+  for i=2:N
+      xi = xs(i-1,:);
+      xi;
+      ui = u(i-1,:);
+      xs = [xs; transpose([xi(1) + dtval * cos(xi(3)) * ui(1); xi(2) + dtval * sin(xi(3)) * ui(1); xi(3) + dtval * ui(2)])];
   end
+  xs = transpose(xs);
 end
 
 function xs = getXwindow(xinit, t0, tf, N)
   dtval = (tf-t0)/N;
   times = linspace(t0, tf, N);
-  xs(1,:) = xinit;
   uinit = [1; -0.5];
+  xinit;
+  xf(1,:) = [transpose(xinit)];
+  xi = xinit;
+  xs = [transpose([xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)])];%transpose(xinit);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ending up with 101?
   for i=2:N
       xi = xs(i-1,:);
-      xs(i,:) = [xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)];
+      xi;
+      xs = [xs; transpose([xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)])];
   end
+  xs = transpose(xs);
 end
 
 function gs = getGamma(hx, rhowindow)
@@ -291,6 +343,7 @@ end
 
 function u2star = getu2star(gammas, xwindow, hs, rhowindow)
   global alphaD N R;
+  xwindow = transpose(xwindow);
   uinit = [1; -0.5];
   us = [];
   RT = transpose(R);
@@ -311,6 +364,7 @@ end
 %%%
 function ps = getPwindow(xwindow, t0, tf, N)
   global allPosInit P1 rhos0
+  xwindow = transpose(xwindow);
   dtval = (tf-t0)/N;
   times = linspace(t0, tf, N);
   uinit = [1; -0.5];
