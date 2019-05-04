@@ -107,7 +107,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     % now get an initial cost J1, init
     tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp, t0) % calc J with position for this window and controls for this window but controls are same for all for init controls
-    alphaD = -10 * J1init;
+    alphaD = -10;%-10 * J1init;
     %
     % specify a sensitivity alphaD
     %alphaD = alphaD;
@@ -134,14 +134,15 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     %%%%%% optional????
     %
     % now update u1 for values of u from tau0 to tauFin over length lambda
-    u1 = [u1; updateUs(u2star, numIndstCalcMax+additionalTauInd)];
+    updatedU2star = updateUs(u2star, numIndstCalcMax+additionalTauInd);
+    u1 = [u1; updatedU2star];
     %
     %      Now simulate new xs and put them into an array to be used above
     %%%%%%%%%%%%
     if length(xsFin) < 4
         xsFin = transpose(xsFin);
     end
-    xsFin = transpose([xsFin; transpose(simulateX(xinit, u1, t0, tf))]);
+    xsFin = transpose([xsFin; transpose(simulateX(xinit, updatedU2star, t0, tf))]);
 %     if iterations == 0
 %         xsFin
 %     end
@@ -274,7 +275,7 @@ function j = J(vals, t0)
   sumsofar = 0;
   for i = 1:N
     xi = [xs(1, i); xs(2, i); xs(3, i)];
-    ui = [us(1, i); us(2, i)];
+    ui = [0; 0];%[us(1, i); us(2, i)];
     xdi = Fdest(startInd + i-1);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% i'm using partial J ranges but this thinks of it as the whole
     xidiff = xi - xdi;
     sumsofar = sumsofar + transpose(xidiff) * Q * xidiff + transpose(ui) * R * ui;
@@ -362,15 +363,15 @@ function cs = updateUs(u2, tau, u1)
       if (i >= tau) & (i <= tau+numItersControlDurationDefault)
           res(i,:) = u2(i,:);
       else
-          res(i,:) = [1; -0.5];
+          res(i,:) = [0; 0];
       end
   end
   cs = res;
 end
 
 function xs = simulateX(xinit, u, t0, tf)
-  global N
-  dtval = (tf-t0)/N;
+  global N dtval
+  %dtval = (tf-t0)/N;
   uinit = [u(1); u(2)];
   xinit;
   xf(1,:) = [transpose(xinit)];
@@ -415,7 +416,7 @@ end
 function u2star = getu2star(gammas, xwindow, hs, rhowindow)
   global alphaD N R;
   xwindow = transpose(xwindow);
-  uinit = [1; -0.5];
+  uinit = [0; 0];
   us = [];
   RT = transpose(R);
   xts = transpose(xwindow);
