@@ -2,19 +2,19 @@
 clear
 global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega predictionHorizon samplingTime tCalcMax maxBacktrackingIters endTime Q R P1 dtval totalN maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
 
-N = 100;
+N = 10;
 
-maxU1 = 5;
-maxU2 = 5;
-minU1 = 5;
-minU2 = 5;
+maxU1 = 100;
+maxU2 = 100;
+minU1 = -100;
+minU2 = -100;
 
 endTime = 2*pi;
 
-alphaD = 1; % alpha_d desired sensitivity of the cost function to the control signal
+alphaD = -10; % alpha_d desired sensitivity of the cost function to the control signal
 deltaJMin = 1; % min change in cost
 currTime = 0; % t_curr
-predictionHorizon = endTime / 30; % T
+predictionHorizon = endTime / 10000; % T
 
 totalN = (endTime / predictionHorizon) * N;
 dtval = endTime / totalN;
@@ -100,15 +100,16 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     xs = [xs xwindow];
     %
     % now get rho (same as adjoint variable P) values for times t0->tf
-    rhowindow = getPwindow(xwindow, t0, tf, N);
+    rhowindow = getPwindow(xwindow, t0, tf, N); % these rhos are already flipped
     rhos = [rhowindow; rhos];
     rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    
     %
     % now get an initial cost J1, init
-    length(xwindow)
-    length(allControlsInit(:,1:N))
+    length(xwindow);
+    length(allControlsInit(:,1:N));
     tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp)
+    alphaD = -10 * J1init;
     %
     % specify a sensitivity alphaD
     %alphaD = alphaD;
@@ -151,7 +152,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
         xsFin = transpose(xsFin);
     end
     allNewPos(length(xsFin)+1:end,:);
-    xsFin
+    xsFin;
     allNewPos = [xsFin; allNewPos(length(xsFin)+1:end,:)];
     %
     % now update current time
@@ -164,29 +165,72 @@ end
 
 
 
-% rhos = transpose(rhos);
-% linspace(0,endTime, totalN);
-% rhos(1,:);
-% plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
-% xlim([0 length(rhos(1,:))-1]); 
-% ylim([-20 20]);
-% title("Position");
-% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-% ylabel("rho vals");
-% xs(:,1)
-% plot([0:length(xs(:,1))-1], [transpose(allNewPos(:,1)); transpose(allNewPos(:,2)); transpose(allNewPos(:,3))]);
-% xlim([0 length(xs(:,1))-1]); 
+rhos = transpose(rhos);
+linspace(0,endTime, totalN);
+rhos(1,:);
+plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
+xlim([0 length(rhos(1,:))-1]); 
+ylim([-20 20]);
+title("Position");
+xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+ylabel("rho vals");
+xs(:,1)
+
+% plot([0:totalN-1], [transpose(allNewPos(:,1)); transpose(allNewPos(:,2)); transpose(allNewPos(:,3))]);
+% xlim([0 totalN-1]); 
 % ylim([-20 20]);
 % title("Position");
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("position vals");
 
-plot([0:totalN-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
-xlim([0 totalN-1]); 
-ylim([-20 20]);
-title("Controls");
-xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-ylabel("control vals");
+% plot([0:length(transpose(allNewPos(:,1)))-1], [transpose(allNewPos(:,1)); transpose(allNewPos(:,2)); transpose(allNewPos(:,3))]);
+% xlim([0 length(transpose(allNewPos(:,1)))-1]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("position vals");
+
+% plot([0:totalN-1], transpose(allNewPos(:,1)));
+% xlim([0 totalN-1]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("position vals");
+
+% plot(transpose(allNewPos(:,1)), transpose(allNewPos(:,2)));
+% xlim([-20 20]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("x2");
+
+% plot(allPosInit(1,:), allPosInit(2,:));
+% xlim([-20 20]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("x2");
+
+% plot([0:totalN-1], [allPosInit(1,:); allPosInit(2,:); allPosInit(3,:)]);
+% xlim([0 totalN-1]); 
+% ylim([-20 20]);
+% title("Position");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("pos vals");
+
+% plot([0:totalN-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
+% xlim([0 totalN-1]); 
+% ylim([-20 20]);
+% title("Controls");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("control vals");
+
+% plot([0:length(transpose(u1(:,1)))-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
+% xlim([0 length(transpose(u1(:,1)))-1]); 
+% ylim([-100 100]);
+% title("Controls");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("control vals");
 
 
 
@@ -269,19 +313,19 @@ function sat = saturate(us, tau)
   newUs = us;
   for i=tau:(tau+numItersControlDurationDefault)
       if us(i,1) > maxU1
-          newU(i,1) = maxU1;
+          newUs(i,1) = maxU1;
       end
       if us(i,2) > maxU2
-          newU(i,2) = maxU2;
+          newUs(i,2) = maxU2;
       end
       if us(i,1) < minU1
-          newU(i,1) = minU1;
+          newUs(i,1) = minU1;
       end
       if us(i,2)< minU2
-          newU(i,2) = minU2;
+          newUs(i,2) = minU2;
       end
   end
-  sat = newU;
+  sat = newUs;
 end
 
 function cs = updateUs(u2, tau, u1)
