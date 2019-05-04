@@ -107,7 +107,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     % now get an initial cost J1, init
     tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp, t0) % calc J with position for this window and controls for this window but controls are same for all for init controls
-    alphaD = -10 * J1init;
+    alphaD = 10 * J1init;
     %
     % specify a sensitivity alphaD
     %alphaD = alphaD;
@@ -202,12 +202,12 @@ for adsf=1
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("position vals");
 
-% plot(transpose(allNewPos(:,1)), transpose(allNewPos(:,2)));
-% xlim([-20 20]); 
-% ylim([-20 20]);
-% title("Position");
-% xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-% ylabel("x2");
+plot(transpose(allNewPos(:,1)), transpose(allNewPos(:,2)));
+xlim([-20 20]); 
+ylim([-20 20]);
+title("Position");
+xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+ylabel("x2");
 
 % plot(allPosInit(1,:), allPosInit(2,:));
 % xlim([-20 20]); 
@@ -244,12 +244,12 @@ for adsf=1
 % xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 % ylabel("control vals");
 
-plot([0:length(transpose(u1(:,1)))-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
-xlim([0 length(transpose(u1(:,1)))-1]); 
-ylim([-100 100]);
-title("Controls");
-xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
-ylabel("control vals");
+% plot([0:length(transpose(u1(:,1)))-1], [transpose(u1(:,1)); transpose(u1(:,2))]);
+% xlim([0 length(transpose(u1(:,1)))-1]); 
+% ylim([-100 100]);
+% title("Controls");
+% xlabel("t");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
+% ylabel("control vals");
 end %%%%%%%%%%%%%% GRAPHING part here
 %%%%%%%%%%%%%% GRAPHING part here
 %%%%%%%%%%%%%% GRAPHING part here
