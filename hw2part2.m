@@ -1,7 +1,13 @@
 
 clear
-global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega predictionHorizon samplingTime tCalcMax maxBacktrackingIters endTime Q R P1 dtval totalN
+global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega predictionHorizon samplingTime tCalcMax maxBacktrackingIters endTime Q R P1 dtval totalN maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
+
 N = 100;
+
+maxU1 = 5;
+maxU2 = 5;
+minU1 = 5;
+minU2 = 5;
 
 endTime = 2*pi;
 
@@ -9,19 +15,22 @@ alphaD = 1; % alpha_d desired sensitivity of the cost function to the control si
 deltaJMin = 1; % min change in cost
 currTime = 0; % t_curr
 predictionHorizon = endTime / 10; % T
-defaultControlDuration = predictionHorizon/2; % deltaT_init
+
+totalN = (endTime / predictionHorizon) * N;
+dtval = endTime / totalN;
+
+defaultControlDuration = predictionHorizon/5; % deltaT_init
+numItersControlDurationDefault = round(defaultControlDuration*N/predictionHorizon);
 nominalControlU1 = 0; % nominal control u1
 omega = 0.5; % scale factor omega
 samplingTime = 1; % t_s
-tCalcMax = 1; % t_calc max time for iterative control calculations
+numIndstCalcMax = 2;
+tCalcMax = dtval*numIndstCalcMax; % t_calc max time for iterative control calculations
 maxBacktrackingIters = 1; % k_max
 
 Q = [100 0 0; 0 15 0; 0 0 1];
 R = [0.1 0; 0 0.1];
 P1 = [5 0 0;0 1 0; 0 0 0.01];
-
-totalN = (endTime / predictionHorizon) * N;
-dtval = endTime / totalN;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 initCondsVect = [0 0 pi/2 1 -0.5];
@@ -62,6 +71,7 @@ global rhos0;
 rhos0 = P1;
 rhos(1,:) = [P1(1,:) P1(2,:) P1(3,:)];
 xs = [];
+window = 1;
 
 while currTime < endTime %%%% requires that endtime is int multiple of pred horizon
     t0 = currTime
@@ -72,25 +82,40 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     xs = [xs; xwindow];
     xsFin = transpose(xs(end,:));
     len = length(xs)
+    %
     % now get rho (same as adjoint variable P) values for times t0->tf
     rhowindow = getPwindow(xwindow, t0, tf, N);
-    rhos
-    rhowindow
-    rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];
     rhos = [rhowindow; rhos];
-    
+    rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    
+    %
     % now get an initial cost J1, init
-    
+    tmp = [transpose(xwindow); allControlsInit(:,1:N)];
+    J1init = J(tmp)
+    %
     % specify a sensitivity alphaD
-    
-    % how get 
+    %alphaD = alphaD;
+    %
+    % calculate gamma
+    hx = h(xwindow);
+    gammas = getGamma(hx, rhowindow);
+    %
+    % get u_2_*
+    u2star = getu2star(gammas, xwindow, hx, rhowindow);
+    %
+    % now specify tau application time tau > t0 + tcalc
+    additionalTauInd = 2;
+    tau = t0 + tCalcMax + additionalTauInd*dtval; % some tau value
+    %
+    % now saturate u2star
+    u2star = saturate(u2star, numIndstCalcMax + additionalTauInd);
+    %
     currTime = tf;
 end
 
 
 
 rhos = transpose(rhos);
-linspace(0,endTime, totalN)
+linspace(0,endTime, totalN);
 rhos(1,:);
 plot([0:length(rhos(1,:))-1], [rhos(1,:); rhos(2,:); rhos(3,:); rhos(4,:); rhos(5,:); rhos(6,:); rhos(7,:); rhos(8,:); rhos(9,:)]);
 xlim([0 length(rhos(1,:))-1]); 
@@ -162,21 +187,45 @@ function xdest = Fdest(i)
 
   xdest = [dtval * 2 * i / pi; 0; pi/2];
 end
+
 function hval = h(xs)
-  hs = []
+  hs = [];
   for i=1:length(xs)
       thetaval = xs(i,3);
       hs(:,:,i) = [cos(thetaval) 0; sin(thetaval) 0; 0 1];
   end
-  hval = hs
+  hval = hs;
 end
+
 function Amatv = Amat(x, u, index)
   % D_1(f(x,u))
   Amatv = [0 0 -sin(x(3))*u(1); 0 0 cos(x(3))*u(1); 0 0 0];
 end
+
 function xvectdot = Fsinglevectdot(x, u)
   xvectdot = [cos(x(3)) * u(1); sin(x(3)) * u(1); u(2)];
 end
+
+function sat = saturate(us, tau)
+  global maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
+  newUs = us
+  for i=tau:(tau+numItersControlDurationDefault)
+      if us(i,1) > maxU1
+          newU(i,1) = maxU1;
+      end
+      if us(i,2) > maxU2
+          newU(i,2) = maxU2;
+      end
+      if us(i,1) < minU1
+          newU(i,1) = minU1;
+      end
+      if us(i,2)< minU2
+          newU(i,2) = minU2;
+      end
+  end
+  sat = newU;
+end
+
 function xs = getXwindow(xinit, t0, tf, N)
   dtval = (tf-t0)/N;
   times = linspace(t0, tf, N);
@@ -187,6 +236,38 @@ function xs = getXwindow(xinit, t0, tf, N)
       xs(i,:) = [xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)];
   end
 end
+
+function gs = getGamma(hx, rhowindow)
+  global N;
+  gs = [];
+  for i=1:N
+      hxi = hx(:,:,i);
+      rhoi = rhowindow(i,:);
+      rhoToUse = [rhoi(1,1:3);rhoi(1,4:6);rhoi(1,7:9)];
+      gs(:,:,i) = transpose(hxi)*rhoToUse*transpose(rhoToUse)*hxi;
+  end
+end
+
+function u2star = getu2star(gammas, xwindow, hs, rhowindow)
+  global alphaD N R;
+  uinit = [1; -0.5];
+  us = [];
+  RT = transpose(R);
+  xts = transpose(xwindow);
+  for i=1:N alphaD;
+      gammai = gammas(:,:,i);
+      xti = xts(:,i);
+      hi = hs(:,:,i);
+      rhoi = rhowindow(i,:);
+      rhoToUse = [rhoi(1,1:3);rhoi(1,4:6);rhoi(1,7:9)];
+      %%%%%%%%%%%%% had to make a vector out of alphaD to make math work
+      alphaDVect = [alphaD; alphaD; alphaD];
+      %%%%%%%%%%%%%
+      us(i,:) = inv(gammai + RT) * (gammai * uinit + transpose(hi) * rhoToUse * alphaDVect);
+  end
+  u2star = us;
+end
+%%%
 function ps = getPwindow(xwindow, t0, tf, N)
   global allPosInit P1 rhos0
   dtval = (tf-t0)/N;
