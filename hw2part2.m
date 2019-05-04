@@ -4,10 +4,10 @@ global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega
 
 N = 100;
 
-maxU1 = 100;
-maxU2 = 100;
-minU1 = -100;
-minU2 = -100;
+maxU1 = 10;
+maxU2 = 10;
+minU1 = -10;
+minU2 = -10;
 
 endTime = 2*pi;
 
@@ -19,7 +19,7 @@ predictionHorizon = endTime / 100; % T
 totalN = (endTime / predictionHorizon) * N;
 dtval = endTime / totalN;
 
-defaultControlDuration = predictionHorizon/5; % deltaT_init
+defaultControlDuration = predictionHorizon/3; % deltaT_init
 numItersControlDurationDefault = round(defaultControlDuration*N/predictionHorizon);
 nominalControlU1 = 0; % nominal control u1
 omega = 0.5; % scale factor omega
@@ -38,8 +38,8 @@ u1init = 1;
 u2init = -0.5;
 
 for i = 1:totalN
-    u1col(i) = u1init;
-    u2col(i) = u2init;
+    u1col(i) = 0;%u1init;
+    u2col(i) = 0;%u2init;
     timevals(i) = dtval * i;
     xdest(:,i) = Fdest(i);
 end %% setting init controls
@@ -50,7 +50,7 @@ theta0col(1) = initCondsVect(3);
 %%%% setting x init
 for i = 2:totalN
     xvalToUseForInitVectDot = [x0col(i-1), x1col(i-1), theta0col(i-1)];
-    xvalsVector = Fsinglevectdot(xvalToUseForInitVectDot, [u1init u2init]);
+    xvalsVector = Fsinglevectdot(xvalToUseForInitVectDot, [0 0]);%[u1init u2init]);
     x0col(i) = x0col(i-1) + dtval * xvalsVector(1);
     x1col(i) = x1col(i-1) + dtval * xvalsVector(2);
     theta0col(i) = theta0col(i-1) + dtval * xvalsVector(3);
@@ -75,7 +75,7 @@ xs = [];
 window = 1;
 controls = [];
 for i=1:totalN
-    controls(:,i) = [1; -0.5];
+    controls(:,i) = [0; 0];%[1; -0.5];
 end 
 
 u1 = [];
@@ -107,7 +107,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     % now get an initial cost J1, init
     tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp, t0) % calc J with position for this window and controls for this window but controls are same for all for init controls
-    alphaD = -10;%-10 * J1init;
+    alphaD = -10 * J1init;
     %
     % specify a sensitivity alphaD
     %alphaD = alphaD;
@@ -142,7 +142,8 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     if length(xsFin) < 4
         xsFin = transpose(xsFin);
     end
-    xsFin = transpose([xsFin; transpose(simulateX(xinit, updatedU2star, t0, tf))]);
+    xsWithNewControlsU2star = simulateX(xinit, updatedU2star, t0, tf);
+    xsFin = transpose([xsFin; transpose(xsWithNewControlsU2star)]);
 %     if iterations == 0
 %         xsFin
 %     end
@@ -389,7 +390,7 @@ end
 function xs = getXwindow(xinit, t0, tf, N)
   dtval = (tf-t0)/N;
   times = linspace(t0, tf, N);
-  uinit = [1; -0.5];
+  uinit = [0; 0];%[1; -0.5];
   xinit;
   xf(1,:) = [transpose(xinit)];
   xi = xinit;
@@ -439,7 +440,7 @@ function ps = getPwindow(xwindow, t0, tf, N)
   xwindow = transpose(xwindow);
   dtval = (tf-t0)/N;
   times = linspace(t0, tf, N);
-  uinit = [1; -0.5];
+  uinit = [0; 0];%[1; -0.5];
   rhos = [];
   As = [];
   xidiffs = [];
