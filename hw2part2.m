@@ -72,16 +72,20 @@ rhos0 = P1;
 rhos(1,:) = [P1(1,:) P1(2,:) P1(3,:)];
 xs = [];
 window = 1;
+controls = []
+for i=1:totalN
+    controls(:,i) = [1; -0.5];
+end 
+
+u1 = [];
 
 while currTime < endTime %%%% requires that endtime is int multiple of pred horizon
-    t0 = currTime
+    t0 = currTime;
     tf = currTime + predictionHorizon;
     xinit = xsFin(:,end);
     % now get a matrix of xs for times t0->tf
     xwindow = getXwindow(xinit, t0, tf, N);
     xs = [xs; xwindow];
-    xsFin = transpose(xs(end,:));
-    len = length(xs)
     %
     % now get rho (same as adjoint variable P) values for times t0->tf
     rhowindow = getPwindow(xwindow, t0, tf, N);
@@ -109,6 +113,21 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     % now saturate u2star
     u2star = saturate(u2star, numIndstCalcMax + additionalTauInd);
     %
+    % now initialize k and j1new for looping to 
+    k = 0;
+    J1new = inf;
+    %
+    % now do line search for lambda
+    %%%%%% optional????
+    %
+    % now update u1 for values of u from tau0 to tauFin over length lambda
+    u1 = [u1; updateUs(u2star, numIndstCalcMax+additionalTauInd)];
+    %
+    %      Now simulate new xs and put them into an array to be used above
+    %%%%%%%%%%%%
+    xFin = [xFin; simulateX(XFin, u1)];
+    %
+    % now update current time
     currTime = tf;
 end
 
@@ -208,7 +227,7 @@ end
 
 function sat = saturate(us, tau)
   global maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
-  newUs = us
+  newUs = us;
   for i=tau:(tau+numItersControlDurationDefault)
       if us(i,1) > maxU1
           newU(i,1) = maxU1;
@@ -224,6 +243,28 @@ function sat = saturate(us, tau)
       end
   end
   sat = newU;
+end
+
+function cs = updateUs(u2, tau, u1)
+  global N numItersControlDurationDefault
+  res = [];
+  for i=1:N
+      if (i >= tau) & (i <= tau+numItersControlDurationDefault)
+          res(i,:) = u2(i,:);
+      else
+          res(i,:) = [1; -0.5];
+      end
+  end
+  cs = res;
+end
+
+function xs = simulateX(xfin, u)
+  global N
+  xf = xfin(:,end);
+  res = []
+  for i=1:N
+      res(i,:) = [;;];
+  end
 end
 
 function xs = getXwindow(xinit, t0, tf, N)
