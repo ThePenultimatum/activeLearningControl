@@ -2,24 +2,24 @@
 clear
 global N alphaD deltaJMin currTime defaultControlDuration nominalControlU1 omega predictionHorizon samplingTime tCalcMax maxBacktrackingIters endTime Q R P1 dtval totalN maxU1 maxU2 minU1 minU2 numItersControlDurationDefault
 
-N = 100;
+N = 10;
 
-maxU1 = 10;
-maxU2 = 10;
-minU1 = -10;
-minU2 = -10;
+maxU1 = 15;
+maxU2 = 15;
+minU1 = -15;
+minU2 = -15;
 
 endTime = 2*pi;
 
 alphaD = -10; % alpha_d desired sensitivity of the cost function to the control signal
 deltaJMin = 1; % min change in cost
 currTime = 0; % t_curr
-predictionHorizon = endTime / 100; % T
+predictionHorizon = endTime / 1000; % T
 
 totalN = (endTime / predictionHorizon) * N;
 dtval = endTime / totalN;
 
-defaultControlDuration = predictionHorizon/3; % deltaT_init
+defaultControlDuration = predictionHorizon/2; % deltaT_init
 numItersControlDurationDefault = round(defaultControlDuration*N/predictionHorizon);
 nominalControlU1 = 0; % nominal control u1
 omega = 0.5; % scale factor omega
@@ -36,6 +36,9 @@ P1 = [5 0 0;0 1 0; 0 0 0.01];
 initCondsVect = [0 0 pi/2 1 -0.5];
 u1init = 1;
 u2init = -0.5;
+uoverallInitNonzero = [1; -0.5];
+uoverallInitZero = [0; 0];
+global uoverallInitNonzero uoverallInitZero;
 
 for i = 1:totalN
     u1col(i) = 0;%u1init;
@@ -75,7 +78,7 @@ xs = [];
 window = 1;
 controls = [];
 for i=1:totalN
-    controls(:,i) = [0; 0];%[1; -0.5];
+    controls(:,i) =[0; 0];%[1; -0.5];
 end 
 
 u1 = [];
@@ -101,13 +104,13 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     %
     % now get rho (same as adjoint variable P) values for times t0->tf
     rhowindow = getPwindow(xwindow, t0, tf, N); % these rhos are already flipped
-    rhos = [rhos; rhowindow];%%%%%%%%%%%%%%%%????????????????
-    rhos0 = P1;%[rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    %%%%%%%%%%%%%%%%????????????????
+    rhos = [rhowindow; rhos];%%%%%%%%%%%%%%%%????????????????
+    rhos0 = [rhos(1,1:3); rhos(1,4:6); rhos(1,7:9)];    %%%%%%%%%%%%%%%%????????????????
     %
     % now get an initial cost J1, init
     tmp = [xwindow; allControlsInit(:,1:N)];
     J1init = J(tmp, t0) % calc J with position for this window and controls for this window but controls are same for all for init controls
-    alphaD = 10 * J1init;
+    alphaD = -15;%* J1init;
     %
     % specify a sensitivity alphaD
     %alphaD = alphaD;
@@ -134,7 +137,7 @@ while currTime < endTime %%%% requires that endtime is int multiple of pred hori
     %%%%%% optional????
     %
     % now update u1 for values of u from tau0 to tauFin over length lambda
-    updatedU2star = updateUs(u2star, numIndstCalcMax+additionalTauInd);
+    updatedU2star = -updateUs(u2star, numIndstCalcMax+additionalTauInd);
     u1 = [u1; updatedU2star];
     %
     %      Now simulate new xs and put them into an array to be used above
@@ -203,8 +206,8 @@ for adsf=1
 % ylabel("position vals");
 
 plot(transpose(allNewPos(:,1)), transpose(allNewPos(:,2)));
-xlim([-20 20]); 
-ylim([-20 20]);
+xlim([-8 8]); 
+ylim([-8 8]);
 title("Position");
 xlabel("x1");% [allPosInit(1,:);allPosInit(2,:);allPosInit(3,:)]
 ylabel("x2");
@@ -276,7 +279,7 @@ function j = J(vals, t0)
   sumsofar = 0;
   for i = 1:N
     xi = [xs(1, i); xs(2, i); xs(3, i)];
-    ui = [0; 0];%[us(1, i); us(2, i)];
+    ui = [us(1, i); us(2, i)];%[0; 0];%[us(1, i); us(2, i)];
     xdi = Fdest(startInd + i-1);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% i'm using partial J ranges but this thinks of it as the whole
     xidiff = xi - xdi;
     sumsofar = sumsofar + transpose(xidiff) * Q * xidiff + transpose(ui) * R * ui;
@@ -364,7 +367,7 @@ function cs = updateUs(u2, tau, u1)
       if (i >= tau) & (i <= tau+numItersControlDurationDefault)
           res(i,:) = u2(i,:);
       else
-          res(i,:) = [0; 0];
+          res(i,:) = [1; -0.5];%[0; 0];
       end
   end
   cs = res;
@@ -373,11 +376,11 @@ end
 function xs = simulateX(xinit, u, t0, tf)
   global N dtval
   %dtval = (tf-t0)/N;
-  uinit = [u(1); u(2)];
+  %uinit = [u(1); u(2)];
   xinit;
   xf(1,:) = [transpose(xinit)];
   xi = xinit;
-  xs = [transpose([xi(1) + dtval * cos(xi(3)) * uinit(1); xi(2) + dtval * sin(xi(3)) * uinit(1); xi(3) + dtval * uinit(2)])];%transpose(xinit);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ending up with 101?
+  xs = [transpose([xi(1) + dtval * cos(xi(3)) * u(1,1); xi(2) + dtval * sin(xi(3)) * u(1,1); xi(3) + dtval * u(1,2)])];%transpose(xinit);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ending up with 101?
   for i=2:N
       xi = xs(i-1,:);
       xi;
@@ -417,7 +420,7 @@ end
 function u2star = getu2star(gammas, xwindow, hs, rhowindow)
   global alphaD N R;
   xwindow = transpose(xwindow);
-  uinit = [0; 0];
+  uinit = [0; 0]; %[1; -0.5];
   us = [];
   RT = transpose(R);
   xts = transpose(xwindow);
