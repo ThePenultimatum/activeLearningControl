@@ -36,11 +36,9 @@ P1 = [5 0 0;0 1 0; 0 0 0.01];
 initCondsVect = [0 0 pi/2 1 -0.5];
 u1init = 1;
 u2init = -0.5;
-
-global uoverallInitNonzero uoverallInitZero;
-
 uoverallInitNonzero = [1; -0.5];
 uoverallInitZero = [0; 0];
+global uoverallInitNonzero uoverallInitZero;
 
 for i = 1:totalN
     u1col(i) = 0;%u1init;
@@ -466,10 +464,8 @@ end
 %%%
 function rhodot = getRho(t, rho, As, xdiffs, t0, tf)
   global Q N;
-  index = round(((t-t0)/(tf-t0))*(N-1)+1); % +  1);
+  index = round(((t-t0)/(tf-t0))*(N-1)+1);
   rho(1:3);
-  index
-  %N - index
   rhoToUse = [transpose(rho(1:3));transpose(rho(4:6));transpose(rho(7:9))];
   rhodot = -transpose(As(:,:,index))*rhoToUse - Q * transpose(xdiffs(index,:));
   rhodot = rhodot(:);
