@@ -97,6 +97,30 @@ while (abs(norm) > epsilon) && (iters < 5000) && (norm <= 0)
     
 
     gamma = 0.001;
+    if (abs(norm) > 100000)
+        gamma = 0.01;
+    else
+        if (abs(norm) > 5000)
+            gamma = 0.01;
+        else
+            if (abs(norm) > 1000)
+                gamma = 0.01;
+            else
+                if (abs(norm) > 100)
+                    gamma = 0.0075;
+                else
+                    if (abs(norm) > 50)
+                        gamma = 0.00001;
+                    else
+                        if (norm < 0)
+                            gamma = 0.000001;
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
     newucols = ucolsToUse + v * gamma;
     newxcols = zeros(3,N);
     prev = allPosInit(:,1);
@@ -109,6 +133,14 @@ while (abs(norm) > epsilon) && (iters < 5000) && (norm <= 0)
         prev = newxvalhere;
     end
     
+    %beta = 0.7;
+    %alpha = 0.4;
+    %n = 0;
+    %gamma = beta ^ n;
+    %armijoDJ = DJ(ucolsToUse, z, v);
+    %jold = J(xcolsToUse, ucolsToUse);
+    
+    %while (J(
     
     
     
@@ -118,10 +150,10 @@ while (abs(norm) > epsilon) && (iters < 5000) && (norm <= 0)
     
     %%%
     
-    
+    norm = DJ(ucolsToUse, z, v);
     iters = iters + 1;
     if mod(iters,10) == 0
-        norm = DJ(ucolsToUse, z, v)
+        norm% = DJ(ucolsToUse, z, v)
     end
     if mod(iters,100) == 0
         iters

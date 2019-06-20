@@ -78,7 +78,7 @@ rhos0 = P1;
 rhos(1,:) = [P1(1,:) P1(2,:) P1(3,:)];
 xs = [];
 window = 1;
-controls = [];
+controls = zeros(2,N);
 for i=1:totalN
     controls(:,i) =[0; 0];%[1; -0.5];
 end 
