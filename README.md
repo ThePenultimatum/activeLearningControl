@@ -1,4 +1,4 @@
-# Ergodicity, Ergodic Control, and Fisher Information-Based Control with Infotaxis
+# Optimal Control
 
 ## Overview
 The code directory here contains files which perform simulations using methods from optimal control including the Iterative Linear Quadratic Regulator along with Sequential Action Control.
